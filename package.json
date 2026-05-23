@@ -1,0 +1,38 @@
+{
+  "name": "ethereum-cli-wallet",
+  "version": "0.1.0",
+  "description": "Node.js and TypeScript based Ethereum protocol CLI wallet",
+  "type": "module",
+  "bin": {
+    "eth-wallet": "./dist/cli.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsx src/cli.ts",
+    "start": "node dist/cli.js",
+    "typecheck": "tsc --noEmit"
+  },
+  "keywords": [
+    "ethereum",
+    "wallet",
+    "cli",
+    "typescript"
+  ],
+  "license": "MIT",
+  "dependencies": {
+    "commander": "^12.1.0",
+    "dotenv": "^16.4.7",
+    "ethers": "^6.13.5"
+  },
+  "overrides": {
+    "ws": "^8.20.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.5",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
