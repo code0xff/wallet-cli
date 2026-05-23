@@ -1,6 +1,6 @@
 # Ethereum CLI Wallet
 
-Node.js + TypeScript 기반 Ethereum 프로토콜 CLI 월렛입니다.
+An Ethereum protocol CLI wallet built with Node.js and TypeScript.
 
 ## Setup
 
@@ -20,7 +20,7 @@ npm run dev -- balance --name main
 npm run dev -- send --name main --to 0x... --amount 0.01
 ```
 
-빌드 후 전역 링크로 실행할 수도 있습니다.
+You can also build the project and run it through a global link.
 
 ```bash
 npm link
@@ -29,6 +29,6 @@ eth-wallet --help
 
 ## Security Notes
 
-- keystore 파일은 `.wallet/keys` 아래에 암호화 JSON 형태로 저장됩니다.
-- `.wallet/`과 `.env`는 Git 추적에서 제외됩니다.
-- 실제 자금이 있는 메인넷 지갑에는 충분한 검토와 테스트 후 사용하세요.
+- Keystore files are stored as encrypted JSON under `.wallet/keys`.
+- `.wallet/` and `.env` are excluded from Git tracking.
+- Use this with mainnet wallets that hold real funds only after sufficient review and testing.
