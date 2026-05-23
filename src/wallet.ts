@@ -1,3 +1,7 @@
+import { formatEther, isAddress, JsonRpcProvider, parseEther, Wallet } from 'ethers';
+import { getRpcUrl } from './config.js';
+import { loadWallet, saveWallet, type StoredWallet } from './keystore.js';
+
 export interface WalletSaveResult {
   address: string;
   keystorePath: string;
@@ -16,13 +20,9 @@ export interface SendEthResult {
   amountEth: string;
 }
 
-/**
- * Placeholder values keep the practice version type-safe while the real wallet
- * logic is intentionally left for the exercise.
- */
-const TODO_ADDRESS = '0xTODO';
-const TODO_KEYSTORE_PATH = '.wallet/keys/TODO.json';
-const TODO_TX_HASH = '0xTODO';
+function createProvider(): JsonRpcProvider {
+  return new JsonRpcProvider(getRpcUrl());
+}
 
 /**
  * Describe where sensitive wallet material would normally be logged.
@@ -31,9 +31,14 @@ const TODO_TX_HASH = '0xTODO';
  * contains, but production wallet software should never log private keys or seed
  * phrases.
  */
-function logWalletSecretsTodo(): void {
-  console.log('[wallet] Private key: TODO - derive or import the real private key');
-  console.log('[wallet] Mnemonic: TODO - print mnemonic only when the wallet has one');
+function logWalletSecrets(wallet: StoredWallet): void {
+  console.log(`[wallet] Private key: ${wallet.privateKey}`);
+
+  if ('mnemonic' in wallet && wallet.mnemonic) {
+    console.log(`[wallet] Mnemonic: ${wallet.mnemonic.phrase}`);
+  } else {
+    console.log('[wallet] Mnemonic: not available for this wallet');
+  }
 }
 
 /**
@@ -45,17 +50,16 @@ function logWalletSecretsTodo(): void {
  */
 export async function createWallet(name: string, password: string): Promise<WalletSaveResult> {
   console.log(`[wallet] Creating a new wallet: ${name}`);
-  console.log('[wallet] TODO: create a random ethers Wallet');
-  console.log('[wallet] TODO: read and validate the password before encrypting the wallet');
-  console.log(`[wallet] Generated address: ${TODO_ADDRESS}`);
-  logWalletSecretsTodo();
+  const wallet = Wallet.createRandom();
+  console.log(`[wallet] Generated address: ${wallet.address}`);
+  logWalletSecrets(wallet);
 
-  console.log('[wallet] TODO: save the encrypted wallet JSON through the keystore module');
-  console.log(`[wallet] Encrypted keystore saved: ${TODO_KEYSTORE_PATH}`);
+  const keystorePath = await saveWallet(name, wallet, password);
+  console.log(`[wallet] Encrypted keystore saved: ${keystorePath}`);
 
   return {
-    address: TODO_ADDRESS,
-    keystorePath: TODO_KEYSTORE_PATH
+    address: wallet.address,
+    keystorePath
   };
 }
 
@@ -72,18 +76,16 @@ export async function importWallet(
   password: string
 ): Promise<WalletSaveResult> {
   console.log(`[wallet] Importing wallet: ${name}`);
-  console.log('[wallet] TODO: validate the private key format');
-  console.log('[wallet] TODO: create an ethers Wallet from the private key');
-  console.log('[wallet] TODO: read and validate the password before encrypting the wallet');
-  console.log(`[wallet] Imported address: ${TODO_ADDRESS}`);
-  logWalletSecretsTodo();
+  const wallet = new Wallet(privateKey);
+  console.log(`[wallet] Imported address: ${wallet.address}`);
+  logWalletSecrets(wallet);
 
-  console.log('[wallet] TODO: save the encrypted wallet JSON through the keystore module');
-  console.log(`[wallet] Encrypted keystore saved: ${TODO_KEYSTORE_PATH}`);
+  const keystorePath = await saveWallet(name, wallet, password);
+  console.log(`[wallet] Encrypted keystore saved: ${keystorePath}`);
 
   return {
-    address: TODO_ADDRESS,
-    keystorePath: TODO_KEYSTORE_PATH
+    address: wallet.address,
+    keystorePath
   };
 }
 
@@ -96,12 +98,11 @@ export async function importWallet(
  */
 export async function getWalletAddress(name: string, password: string): Promise<string> {
   console.log(`[wallet] Loading wallet address: ${name}`);
-  console.log('[wallet] TODO: load and decrypt the wallet from the keystore');
-  console.log('[wallet] TODO: read the address from the decrypted wallet');
-  console.log(`[wallet] Wallet decrypted: ${TODO_ADDRESS}`);
-  logWalletSecretsTodo();
+  const wallet = await loadWallet(name, password);
+  console.log(`[wallet] Wallet decrypted: ${wallet.address}`);
+  logWalletSecrets(wallet);
 
-  return TODO_ADDRESS;
+  return wallet.address;
 }
 
 /**
@@ -113,20 +114,20 @@ export async function getWalletAddress(name: string, password: string): Promise<
  */
 export async function getWalletBalance(name: string, password: string): Promise<BalanceResult> {
   console.log(`[wallet] Loading wallet for balance check: ${name}`);
-  console.log('[wallet] TODO: load and decrypt the wallet from the keystore');
-  console.log(`[wallet] Wallet decrypted: ${TODO_ADDRESS}`);
-  logWalletSecretsTodo();
+  const wallet = await loadWallet(name, password);
+  console.log(`[wallet] Wallet decrypted: ${wallet.address}`);
+  logWalletSecrets(wallet);
 
-  console.log('[wallet] TODO: create a JsonRpcProvider from ETH_RPC_URL');
-  console.log(`[wallet] Fetching balance: ${TODO_ADDRESS}`);
-  console.log('[wallet] TODO: call provider.getBalance(address)');
-  console.log('[wallet] TODO: format the wei balance into ETH');
-  console.log('[wallet] Balance fetched: 0.0 ETH');
+  const provider = createProvider();
+  console.log(`[wallet] Fetching balance: ${wallet.address}`);
+  const balanceWei = await provider.getBalance(wallet.address);
+  const balanceEth = formatEther(balanceWei);
+  console.log(`[wallet] Balance fetched: ${balanceEth} ETH`);
 
   return {
-    address: TODO_ADDRESS,
-    balanceWei: 0n,
-    balanceEth: '0.0'
+    address: wallet.address,
+    balanceWei,
+    balanceEth
   };
 }
 
@@ -145,24 +146,27 @@ export async function sendEth(
 ): Promise<SendEthResult> {
   console.log(`[wallet] Preparing ETH transfer from wallet: ${name}`);
 
-  console.log('[wallet] TODO: validate the recipient address with ethers.isAddress');
+  if (!isAddress(to)) {
+    throw new Error(`Invalid recipient address: ${to}`);
+  }
   console.log(`[wallet] Recipient address validated: ${to}`);
 
-  console.log('[wallet] TODO: create a JsonRpcProvider from ETH_RPC_URL');
+  const provider = createProvider();
   console.log(`[wallet] Loading and decrypting wallet: ${name}`);
-  console.log('[wallet] TODO: load and decrypt the wallet from the keystore');
-  console.log('[wallet] TODO: connect the wallet to the provider');
-  console.log(`[wallet] Sender address: ${TODO_ADDRESS}`);
-  logWalletSecretsTodo();
+  const wallet = (await loadWallet(name, password)).connect(provider);
+  console.log(`[wallet] Sender address: ${wallet.address}`);
+  logWalletSecrets(wallet);
   console.log(`[wallet] Sending ${amountEth} ETH to ${to}`);
-  console.log('[wallet] TODO: parse amountEth into wei with ethers.parseEther');
-  console.log('[wallet] TODO: call wallet.sendTransaction({ to, value })');
 
-  console.log(`[wallet] Transaction submitted: ${TODO_TX_HASH}`);
+  const tx = await wallet.sendTransaction({
+    to,
+    value: parseEther(amountEth)
+  });
+  console.log(`[wallet] Transaction submitted: ${tx.hash}`);
 
   return {
-    hash: TODO_TX_HASH,
-    from: TODO_ADDRESS,
+    hash: tx.hash,
+    from: wallet.address,
     to,
     amountEth
   };
